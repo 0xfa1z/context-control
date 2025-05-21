@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">LLM Context Control</h1>
+        
+        <div class="max-w-4xl mx-auto">
+            <!-- Conversation Editor -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Conversation</h2>
+                    <div class="flex gap-2">
+                        <button onclick="addMessage('system')" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Add System</button>
+                        <button onclick="addMessage('user')" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">Add User</button>
+                        <button onclick="addMessage('assistant')" class="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600">Add Assistant</button>
+                    </div>
+                </div>
+                
+                <div id="conversation" class="space-y-4 mb-4">
+                    <!-- Messages will be added here by JavaScript -->
+                </div>
+
+                <div class="flex justify-end">
+                    <button onclick="sendConversation()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">Send Conversation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addMessage(role, content = '') {
+            const template = `
+                <div class="message-block">
+                    <div class="flex items-center gap-2 mb-1">
+                        <select class="role-select p-1 border rounded">
+                            <option value="system" ${role === 'system' ? 'selected' : ''}>System</option>
+                            <option value="user" ${role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="assistant" ${role === 'assistant' ? 'selected' : ''}>Assistant</option>
+                        </select>
+                        <button onclick="removeMessage(this)" class="text-red-500 hover:text-red-700">×</button>
+                    </div>
+                    <textarea class="w-full p-2 border rounded" rows="3" placeholder="Enter message content...">${content}</textarea>
+                </div>
+            `;
+            document.getElementById('conversation').insertAdjacentHTML('beforeend', template);
+        }
+
+        function removeMessage(button) {
+            button.closest('.message-block').remove();
+        }
+
+        function getMessages() {
+            const messages = [];
+            document.querySelectorAll('.message-block').forEach(block => {
+                const role = block.querySelector('.role-select').value;
+                const content = block.querySelector('textarea').value.trim();
+                if (content) {
+                    messages.push({
+                        role: role,
+                        content: content
+                    });
+                }
+            });
+            return messages;
+        }
+
+        async function sendConversation() {
+            const messages = getMessages();
+            if (messages.length === 0) return;
+
+            // Log the conversation to console
+            console.log("\n=== Sending Conversation ===");
+            messages.forEach(msg => {
+                console.log(`\n${msg.role.toUpperCase()}:`);
+                console.log(msg.content);
+            });
+            console.log("\n======================\n");
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ messages: messages })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                } else {
+                    // Add the response as a new assistant message
+                    addMessage('assistant');
+                    const lastTextarea = document.querySelector('.message-block:last-child textarea');
+                    lastTextarea.value = data.response;
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Add initial messages
+        addMessage('system', 'The user you are talking to is Sofian');
+        addMessage('user', 'What is my name?');
+    </script>
+</body>
+</html> 
